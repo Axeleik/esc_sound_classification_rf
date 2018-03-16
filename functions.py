@@ -178,7 +178,7 @@ def extract_features(soundwave,sampling_rate,sound_name="test",feature_list=[]):
 
 def save_all_features_for_all_files(path_to_files,features_path=None,classes_path=None):
     """
-    computes all paths for all soundfiles and saves them in a feature_vector to a file with the names if wanted
+    Computes all paths for all soundfiles and saves them in a feature_vector to a file with the names if wanted
 
     :param path_to_files:
     :param path_to_save:
@@ -239,13 +239,14 @@ def load_random_forest_classifier(features, labels, save_path=None):
 
 def train_and_predict_with_rf(features_train,classes_train,features_test,save_path=None,test=True):
     """
-
+    Train an rf with features and classes, predict afterwards with test features if wanted
     :param features_train: features for training
     :param features_test: features for prediction
     :param classes_train: according training labels
     :return: predictions
     """
 
+    #convert classes into for the formats we need for fitting
     classes=[classes_train[idx][:-2] for idx in range(0,len(classes_train),40)]
     classes_train=np.concatenate([[cl]*40 for cl in classes])
 
@@ -265,95 +266,172 @@ def train_and_predict_with_rf(features_train,classes_train,features_test,save_pa
     return rf
 
 def test_feature_importances(rf):
+    """
+    Plots feature importances with an already fit rf with all features and all classes
+    :param rf: pre-trained rf
+    """
 
     print("Analysing feature importances: ")
 
+    # get length array
     length_array=get_length_array()
 
+    # get feature importances
     f_imp=rf.feature_importances_
 
+    # these arrays have the types of features and the sum
+    # of all importances for each particular feature
     type_arr=[]
     impact_arr=[]
 
+    #start for loop for each feature
     abs_len=0
     for type,length in length_array:
+
+        #write type
         type_arr.append(type)
+
+        #sum up all features for this type (157 is the number of values in a row for 5 second clips)
         impact_arr.append(np.sum(f_imp[abs_len:abs_len+(length*157)]))
+
+        #add to abs_length (just a help int)
         abs_len+=length*157
 
+    #numpyfy
     impact_arr=np.array(impact_arr)
     type_arr=np.array(type_arr)
 
+    #sort for biggest impact
     sort_mask=np.argsort(impact_arr)[::-1]
-
     type_arr=type_arr[sort_mask]
     impact_arr=impact_arr[sort_mask]
 
-    for idx, val in enumerate(impact_arr):
-        print(type_arr[idx],": ",impact_arr[idx])
+    # plot with errorbars
+    plt.plot(type_arr, impact_arr)
+
+    # x label
+    plt.xlabel("Features")
+
+    #plot importance
+    plt.ylabel('Importance (%)')
+
+    # plot title
+    plt.title("Feature importances")
+
+    # show plot
+    plt.show()
 
 
 def k_fold_cross_validation(features,classes,k_fold=10):
+    """
+    Doing cross fold validation with given features, classes and a k_fold factor
+    :param features: all features
+    :param classes: all classes
+    :param k_fold: how many folds for the evaluation
+    :return: cross validation dict
+    """
 
     print("Doing {}-fold cross-validation".format(k_fold))
 
+    #format classes and features so that we can fit the rf with them
     classes=[classes[idx][:-2] for idx in range(0,len(classes),40)]
     classes=np.concatenate([[cl]*40 for cl in classes])
     features=np.array([np.concatenate(feature) for feature in features])
 
+    #create rf
     rf = RandomForestClassifier(500, n_jobs=32)
 
+    #cross validate
+    return sklearn.model_selection.cross_validate(rf, features, classes,
+                                                  cv=k_fold,n_jobs=-1,return_train_score=True)
 
-    return sklearn.model_selection.cross_val_score(rf, features, classes, cv=k_fold)
 
+def k_fold_feature_exclusion(features,classes,excluded_features,k_fold):
+    """
+    Does k-fold evaluation for a given array without specific features
+    :param features: all features
+    :param classes: all classes
+    :param excluded_features: array with the features to exclude
+    :param k_fold: how many folds for the evaluation
+    :return: cross validation dict
+    """
 
-def k_fold_feature_exclusion(features,classes,excluded_features):
-
+    #get length array
     length_array=get_length_array()
 
-    print("Excluding following features:")
-    print(excluded_features)
+    print("Excluding {} features".format(len(excluded_features)))
 
+    #loop for each of the feature types
     abs_len=0
     for feature_type,feature_length in length_array:
 
+        #esclude if in exclusion list
         if feature_type in excluded_features:
             features=np.delete(features,np.s_[abs_len:abs_len+feature_length],axis=1)
+
+        #if not, just jump over it
         else:
             abs_len+=feature_length
 
-    return np.mean(k_fold_cross_validation(features,classes,10))
+    #return results
+    return k_fold_cross_validation(features,classes,k_fold)
 
-def eval_downwards_upwards(features,classes,save_path):
+def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upwards,k_fold):
+    """
+    We do evaluation with exclusion of features, one feature more to exclude per iteration
+
+    :param features: all features
+    :param classes: all classes
+    :param save_path_downwards: save path for downwards eval results
+    :param save_path_upwards: save path for upwards eval results
+    :param k_fold: how many folds for the evaluation
+    """
 
 
+    #if already exist, do nothing
+    if os.path.exists(save_path_downwards) and os.path.exists(save_path_upwards):
+        print("Nothing to do")
+
+    #these are the arrays where we pick out the exclusion from
     excluded_features_downwards = np.array(["malspectrogram", "mfcc", "chroma_stft", "chroma_contrast", "chroma_cens",
                                             "chroma_cqt", "tonnetz", "poly_features", "spectral_bandwidth", "rmse",
                                             "spectral_centroid", "spectral_rolloff", "spectral_flatness",
                                             "zero_crossing_rate"])
-
     excluded_features_upwards = excluded_features_downwards[::-1]
 
 
-
-
-
     print("STARTING DOWNWARDS")
+
+    #this is the final array with all the scores for downwards eval
     results_downwards = []
+
+    #starting loop for downwards eval
     for idx in range(1, len(excluded_features_downwards)):
+
+        #make exclusion array
         excluded_features = excluded_features_downwards[idx:]
 
         print("-------------------------------")
-        print("Downwards idx={}".format(idx))
-        results_downwards.append(k_fold_feature_exclusion(features, classes, excluded_features))
-        print("Result: ",results_downwards[idx-1])
+        print("Downwards")
+
+        #compute and append downwards scores for current exclusion array
+        results_downwards.append(k_fold_feature_exclusion(features, classes, excluded_features,k_fold))
+
+
+        print("Result: ",results_downwards[idx-1]["test_score"])
         print("-------------------------------")
 
     print("-------------------------------")
     print("-------------------------------")
 
-    print("RESULTS DOWNWARDS: ",results_downwards)
-    writeHDF5(results_downwards,save_path,"results_downwards")
+    print("RESULTS DOWNWARDS: ")
+
+    #print results
+    for result_downwards in results_downwards:
+        print(result_downwards["test_score"])
+
+    #save results
+    pickle.dump(results_downwards, open(save_path_downwards, 'wb'))
     print("-------------------------------")
     print("-------------------------------")
 
@@ -361,23 +439,107 @@ def eval_downwards_upwards(features,classes,save_path):
 
     print("STARTING UPWARDS")
 
+    #this is the final array with all the scores for upwards eval
     results_upwards = []
+
     for idx in range(1, len(excluded_features_upwards)):
+
+        #make exclusion array
         excluded_features = excluded_features_upwards[idx:]
 
         print("-------------------------------")
-        print("Downwards idx={}".format(idx))
-        print("Features to exclude:")
-        print(excluded_features)
+        print("Upwards")
 
-        results_upwards.append(k_fold_feature_exclusion(features, classes, excluded_features))
-        print("Result: ",results_upwards[idx-1])
+        #compute and append upward scores for current exclusion array
+        results_upwards.append(k_fold_feature_exclusion(features, classes, excluded_features,k_fold))
+        print("Result: ",results_upwards[idx-1]["test_score"])
         print("-------------------------------")
 
     print("-------------------------------")
     print("-------------------------------")
-    print("RESULTS UPWARDS: ",results_upwards)
-    writeHDF5(results_upwards, save_path, "results_upwards")
+    print("RESULTS UPWARDS: ")
+
+    #print results
+    for result_upwards in results_upwards:
+        print(result_upwards["test_score"])
+
+    #save results
+    pickle.dump(results_upwards, open(save_path_upwards, 'wb'))
+
     print("-------------------------------")
     print("-------------------------------")
 
+def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,k_fold):
+    """
+    Plotting the k-fold evaluation results for the different exclusion vectors
+    :param save_path_downwards: save path for downwards eval results
+    :param save_path_upwards: save path for upwards eval results
+    :param k_fold: how many folds for the evaluation
+    """
+
+
+    #load both result_files
+    results_downwards = pickle.load(open(save_path_downwards, 'rb'))
+    results_upwards = pickle.load(open(save_path_upwards, 'rb'))
+
+    #create array for the types which we plot
+    plot_arr=["test_score","score_time","fit_time"]
+
+    #loop for downward plots
+    for plot_type in plot_arr:
+
+        #make x axis for the number of features we exclude
+        x_axis=np.arange(1,len(results_downwards)+1)[::-1]
+
+        #create means and std sof the results
+        means=[np.mean(result_downwards[plot_type]) for result_downwards in results_downwards]
+        stds=[np.std(result_downwards[plot_type]) for result_downwards in results_downwards]
+
+        #plot with errorbars
+        plt.errorbar(x_axis,means,stds)
+
+        #x label
+        plt.xlabel('Features left out downwards({}-fold)'.format(k_fold))
+
+        #if time eval, plot time, if not plot accuracy
+        if plot_type=="test_score":
+            plt.ylabel('Accuracy')
+        else:
+            plt.ylabel('Time(sec)')
+
+        #plot title
+        plt.title("Downward {}".format(plot_type))
+
+        #show plot
+        plt.show()
+
+
+
+
+    #loop for upward plots
+    for plot_type in plot_arr:
+
+        #make x axis for the number of features we exclude
+        x_axis=np.arange(1,len(results_upwards)+1)[::-1]
+
+        #create means and std sof the results
+        means=[np.mean(result_upwards[plot_type]) for result_upwards in results_upwards]
+        stds=[np.std(result_upwards[plot_type]) for result_upwards in results_upwards]
+
+        #plot with errorbars
+        plt.errorbar(x_axis,means,stds)
+
+        #x label
+        plt.xlabel('Features left out upwards({}-fold)'.format(k_fold))
+
+        #if time eval, plot time, if not plot accuracy
+        if plot_type=="test_score":
+            plt.ylabel('Accuracy')
+        else:
+            plt.ylabel('Time(sec)')
+
+        #plot title
+        plt.title("Upward {}".format(plot_type))
+
+        #show plot
+        plt.show()
