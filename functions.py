@@ -388,9 +388,7 @@ def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upward
     """
 
 
-    #if already exist, do nothing
-    if os.path.exists(save_path_downwards) and os.path.exists(save_path_upwards):
-        print("Nothing to do")
+
 
     #these are the arrays where we pick out the exclusion from
     excluded_features_downwards = np.array(["malspectrogram", "mfcc", "chroma_stft", "chroma_contrast", "chroma_cens",
@@ -399,75 +397,86 @@ def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upward
                                             "zero_crossing_rate"])
     excluded_features_upwards = excluded_features_downwards[::-1]
 
+    #if already exist, do nothing
+    if os.path.exists(save_path_downwards):
+        print("Nothing to do downwards for {}-fold evaluation".format(k_fold))
 
-    print("STARTING DOWNWARDS")
+    # if not, evaluate
+    else:
 
-    #this is the final array with all the scores for downwards eval
-    results_downwards = []
+        print("STARTING DOWNWARDS")
 
-    #starting loop for downwards eval
-    for idx in range(1, len(excluded_features_downwards)):
+        #this is the final array with all the scores for downwards eval
+        results_downwards = []
 
-        #make exclusion array
-        excluded_features = excluded_features_downwards[idx:]
+        #starting loop for downwards eval
+        for idx in range(1, len(excluded_features_downwards)):
 
-        print("-------------------------------")
-        print("Downwards")
+            #make exclusion array
+            excluded_features = excluded_features_downwards[idx:]
 
-        #compute and append downwards scores for current exclusion array
-        results_downwards.append(k_fold_feature_exclusion(features, classes, excluded_features,k_fold))
+            print("-------------------------------")
+            print("Downwards")
 
-
-        print("Result: ",results_downwards[idx-1]["test_score"])
-        print("-------------------------------")
-
-    print("-------------------------------")
-    print("-------------------------------")
-
-    print("RESULTS DOWNWARDS: ")
-
-    #print results
-    for result_downwards in results_downwards:
-        print(result_downwards["test_score"])
-
-    #save results
-    pickle.dump(results_downwards, open(save_path_downwards, 'wb'))
-    print("-------------------------------")
-    print("-------------------------------")
+            #compute and append downwards scores for current exclusion array
+            results_downwards.append(k_fold_feature_exclusion(features, classes, excluded_features,k_fold))
 
 
-
-    print("STARTING UPWARDS")
-
-    #this is the final array with all the scores for upwards eval
-    results_upwards = []
-
-    for idx in range(1, len(excluded_features_upwards)):
-
-        #make exclusion array
-        excluded_features = excluded_features_upwards[idx:]
+            print("Result: ",results_downwards[idx-1]["test_score"])
+            print("-------------------------------")
 
         print("-------------------------------")
-        print("Upwards")
-
-        #compute and append upward scores for current exclusion array
-        results_upwards.append(k_fold_feature_exclusion(features, classes, excluded_features,k_fold))
-        print("Result: ",results_upwards[idx-1]["test_score"])
         print("-------------------------------")
 
-    print("-------------------------------")
-    print("-------------------------------")
-    print("RESULTS UPWARDS: ")
+        print("RESULTS DOWNWARDS: ")
 
-    #print results
-    for result_upwards in results_upwards:
-        print(result_upwards["test_score"])
+        #print results
+        for result_downwards in results_downwards:
+            print(result_downwards["test_score"])
 
-    #save results
-    pickle.dump(results_upwards, open(save_path_upwards, 'wb'))
+        #save results
+        pickle.dump(results_downwards, open(save_path_downwards, 'wb'))
+        print("-------------------------------")
+        print("-------------------------------")
 
-    print("-------------------------------")
-    print("-------------------------------")
+    # if already exist, do nothing
+    if os.path.exists(save_path_upwards):
+        print("Nothing to do upwards for {}-fold evaluation".format(k_fold))
+
+    # if not, evaluate
+    else:
+
+        print("STARTING UPWARDS")
+
+        #this is the final array with all the scores for upwards eval
+        results_upwards = []
+
+        for idx in range(1, len(excluded_features_upwards)):
+
+            #make exclusion array
+            excluded_features = excluded_features_upwards[idx:]
+
+            print("-------------------------------")
+            print("Upwards")
+
+            #compute and append upward scores for current exclusion array
+            results_upwards.append(k_fold_feature_exclusion(features, classes, excluded_features,k_fold))
+            print("Result: ",results_upwards[idx-1]["test_score"])
+            print("-------------------------------")
+
+        print("-------------------------------")
+        print("-------------------------------")
+        print("RESULTS UPWARDS: ")
+
+        #print results
+        for result_upwards in results_upwards:
+            print(result_upwards["test_score"])
+
+        #save results
+        pickle.dump(results_upwards, open(save_path_upwards, 'wb'))
+
+        print("-------------------------------")
+        print("-------------------------------")
 
 def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,k_fold):
     """
