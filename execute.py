@@ -27,7 +27,7 @@ if __name__ == '__main__':
     # eval_downwards_upwards(features,classes,save_path_downwards,save_path_upwards)
 
 
-    for fold in [2,5,10,20,30,40,45]:
+    for fold in [2,5,10,20,30,40]:
         save_path_downwards = "/mnt/localdata1/amatskev/esc_project_rf/fold_eval/downwards_results_k_{}.pkl".format(fold)
         save_path_upwards = "/mnt/localdata1/amatskev/esc_project_rf/fold_eval/upwards_results_k_{}.pkl".format(fold)
 
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
         print("Now computing for class from {} to {}".format(class_idx,class_idx+40*10))
 
-        for fold in [2, 5, 10, 20, 30, 40, 45]:
+        for fold in [2, 5, 10, 20, 30, 40]:
             save_path_downwards = "/mnt/localdata1/amatskev/esc_project_rf/" \
                                   "fold_eval/downwards_results_cl_{}_k_{}.pkl".format(class_idx,fold)
             save_path_upwards = "/mnt/localdata1/amatskev/esc_project_rf/" \
