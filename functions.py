@@ -322,7 +322,7 @@ def test_feature_importances(rf):
     plt.show()
 
 
-def k_fold_cross_validation(features,classes,k_fold=10):
+def k_fold_cross_validation(features,classes,n_trees=500,k_fold=10):
     """
     Doing cross fold validation with given features, classes and a k_fold factor
     :param features: all features
@@ -339,16 +339,16 @@ def k_fold_cross_validation(features,classes,k_fold=10):
     features=np.array([np.concatenate(feature) for feature in features])
 
     #create rf
-    rf = RandomForestClassifier(500, n_jobs=32)
+    rf = RandomForestClassifier(n_trees, n_jobs=32)
 
     #cross validate
     return sklearn.model_selection.cross_validate(rf, features, classes,
                                                   cv=k_fold,n_jobs=-1,return_train_score=True)
 
 
-def k_fold_feature_exclusion(features,classes,excluded_features,k_fold):
+def k_fold_feature_exclusion(features,classes,excluded_features,n_trees,k_fold):
     """
-    Does k-fold evaluation for a given array without specific features
+    Does 10 times k-fold evaluation for a given array without specific features
     :param features: all features
     :param classes: all classes
     :param excluded_features: array with the features to exclude
@@ -373,10 +373,13 @@ def k_fold_feature_exclusion(features,classes,excluded_features,k_fold):
         else:
             abs_len+=feature_length
 
-    #return results
-    return k_fold_cross_validation(features,classes,k_fold)
+    #doing 10 times k-fold cross-validation
+    result=[k_fold_cross_validation(features,classes,n_trees,k_fold) for i in range (0,10)]
 
-def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upwards,k_fold):
+    #return results
+    return result
+
+def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upwards,n_trees,k_fold):
     """
     We do evaluation with exclusion of features, one feature more to exclude per iteration
 
@@ -410,7 +413,7 @@ def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upward
         results_downwards = []
 
         #starting loop for downwards eval
-        for idx in range(1, len(excluded_features_downwards)):
+        for idx in range(1, len(excluded_features_downwards)+1):
 
             #make exclusion array
             excluded_features = excluded_features_downwards[idx:]
@@ -419,20 +422,19 @@ def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upward
             print("Downwards")
 
             #compute and append downwards scores for current exclusion array
-            results_downwards.append(k_fold_feature_exclusion(features, classes, excluded_features,k_fold))
+            results_downwards.append(k_fold_feature_exclusion(features, classes, excluded_features,n_trees,k_fold))
 
-
-            print("Result: ",results_downwards[idx-1]["test_score"])
-            print("-------------------------------")
+            # print("Result: ",results_downwards[idx-1]["test_score"])
+            # print("-------------------------------")
 
         print("-------------------------------")
         print("-------------------------------")
 
-        print("RESULTS DOWNWARDS: ")
-
-        #print results
-        for result_downwards in results_downwards:
-            print(result_downwards["test_score"])
+        # print("RESULTS DOWNWARDS: ")
+        #
+        # #print results
+        # for result_downwards in results_downwards:
+        #     print(result_downwards["test_score"])
 
         #save results
         pickle.dump(results_downwards, open(save_path_downwards, 'wb'))
@@ -451,7 +453,7 @@ def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upward
         #this is the final array with all the scores for upwards eval
         results_upwards = []
 
-        for idx in range(1, len(excluded_features_upwards)):
+        for idx in range(1, len(excluded_features_upwards)+1):
 
             #make exclusion array
             excluded_features = excluded_features_upwards[idx:]
@@ -460,17 +462,17 @@ def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upward
             print("Upwards")
 
             #compute and append upward scores for current exclusion array
-            results_upwards.append(k_fold_feature_exclusion(features, classes, excluded_features,k_fold))
-            print("Result: ",results_upwards[idx-1]["test_score"])
-            print("-------------------------------")
+            results_upwards.append(k_fold_feature_exclusion(features, classes, excluded_features,n_trees,k_fold))
+            # print("Result: ",results_upwards[idx-1]["test_score"])
+            # print("-------------------------------")
 
         print("-------------------------------")
         print("-------------------------------")
-        print("RESULTS UPWARDS: ")
-
-        #print results
-        for result_upwards in results_upwards:
-            print(result_upwards["test_score"])
+        # print("RESULTS UPWARDS: ")
+        #
+        # #print results
+        # for result_upwards in results_upwards:
+        #     print(result_upwards["test_score"])
 
         #save results
         pickle.dump(results_upwards, open(save_path_upwards, 'wb'))
@@ -478,7 +480,7 @@ def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upward
         print("-------------------------------")
         print("-------------------------------")
 
-def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,k_fold):
+def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,n_trees,k_fold,cl="all"):
     """
     Plotting the k-fold evaluation results for the different exclusion vectors
     :param save_path_downwards: save path for downwards eval results
@@ -498,7 +500,7 @@ def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,k_fold):
     for plot_type in plot_arr:
 
         #make x axis for the number of features we exclude
-        x_axis=np.arange(1,len(results_downwards)+1)[::-1]
+        x_axis=np.arange(0,len(results_downwards))[::-1]
 
         #create means and std sof the results
         means=[np.mean(result_downwards[plot_type]) for result_downwards in results_downwards]
@@ -508,7 +510,7 @@ def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,k_fold):
         plt.errorbar(x_axis,means,stds)
 
         #x label
-        plt.xlabel('Features left out downwards({}-fold)'.format(k_fold))
+        plt.xlabel('Features left out')
 
         #if time eval, plot time, if not plot accuracy
         if plot_type=="test_score":
@@ -516,8 +518,13 @@ def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,k_fold):
         else:
             plt.ylabel('Time(sec)')
 
-        #plot title
-        plt.title("Downward {}".format(plot_type))
+        #plot title for class
+        if cl!="all":
+            plt.title("Downward {} with {} trees, {} folds for class {}".format(plot_type,n_trees,k_fold,cl))
+
+        #plot title for whole dataset
+        else:
+            plt.title("Downward {} with {} trees, {} folds for whole dataset".format(plot_type,n_trees,k_fold))
 
         #show plot
         plt.show()
@@ -529,7 +536,7 @@ def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,k_fold):
     for plot_type in plot_arr:
 
         #make x axis for the number of features we exclude
-        x_axis=np.arange(1,len(results_upwards)+1)[::-1]
+        x_axis=np.arange(0,len(results_upwards))[::-1]
 
         #create means and std sof the results
         means=[np.mean(result_upwards[plot_type]) for result_upwards in results_upwards]
@@ -539,7 +546,7 @@ def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,k_fold):
         plt.errorbar(x_axis,means,stds)
 
         #x label
-        plt.xlabel('Features left out upwards({}-fold)'.format(k_fold))
+        plt.xlabel('Features left out')
 
         #if time eval, plot time, if not plot accuracy
         if plot_type=="test_score":
@@ -547,8 +554,14 @@ def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,k_fold):
         else:
             plt.ylabel('Time(sec)')
 
-        #plot title
-        plt.title("Upward {}".format(plot_type))
+        #plot title for class
+        if cl!="all":
+            plt.title("Upward {} with {} trees, {} folds for class {}".format(plot_type,n_trees,k_fold,cl))
+
+        #plot title for whole dataset
+        else:
+            plt.title("Upward {} with {} trees, {} folds for whole dataset".format(plot_type,n_trees,k_fold))
+
 
         #show plot
         plt.show()
