@@ -10,6 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 import pickle
 from vigra import readHDF5,writeHDF5
 import sklearn
+import random
 
 
 def get_length_array():
@@ -23,7 +24,7 @@ def get_length_array():
         ["rmse", 1],
         ["spectral_centroid", 1],
         ["spectral_bandwidth", 1],
-        ["chroma_contrast", 7],
+        ["spectral_contrast", 7],
         ["spectral_flatness", 1],
         ["spectral_rolloff", 1],
         ["poly_features", 2],
@@ -322,6 +323,20 @@ def test_feature_importances(rf):
     plt.show()
 
 
+def shuffle_features_classes(features,classes):
+    """
+    Shuffles two list together, so they have the same order afterwards
+    :param features: features
+    :param classes: classes
+    :return: both lists shuffled
+    """
+
+    zipped = list(zip(features,classes))
+
+    random.shuffle(zipped)
+
+    return zip(*zipped)
+
 def k_fold_cross_validation(features,classes,n_trees=500,k_fold=10):
     """
     Doing cross fold validation with given features, classes and a k_fold factor
@@ -332,6 +347,9 @@ def k_fold_cross_validation(features,classes,n_trees=500,k_fold=10):
     """
 
     print("Doing {}-fold cross-validation".format(k_fold))
+
+    #shuffle both
+    features, classes = shuffle_features_classes(features,classes)
 
     #format classes and features so that we can fit the rf with them
     classes=[classes[idx][:-2] for idx in range(0,len(classes),40)]
@@ -493,8 +511,11 @@ def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,n_trees,k_
     results_downwards = pickle.load(open(save_path_downwards, 'rb'))
     results_upwards = pickle.load(open(save_path_upwards, 'rb'))
 
+    # a=[[single['test_score'] for single in cl ] for cl in results_downwards]
+
     #create array for the types which we plot
     plot_arr=["test_score","score_time","fit_time"]
+
 
     #loop for downward plots
     for plot_type in plot_arr:
