@@ -258,10 +258,18 @@ def train_and_predict_with_rf(features_train,classes_train,features_test,save_pa
     classes=[classes_train[idx][:-2] for idx in range(0,len(classes_train),40)]
     classes_train=np.concatenate([[cl]*40 for cl in classes])
 
+    # adding mean and std
+    mean_std_train = np.array([np.mean(features_train, axis=2), np.std(features_train, axis=2)]).transpose().swapaxes(0,                                                                                                         1)
+    features_train = np.concatenate((features_train, mean_std_train), axis=-1)
+    if len(features_test) != 0:
+        mean_std_test = np.array([np.mean(features_test, axis=2), np.std(features_test, axis=2)]).transpose().swapaxes(
+            0, 1)
+        features_test = np.concatenate((features_test, mean_std_test), axis=-1)
 
     # convert features (np.concatenate(features) does not work on any axis in desirable way)
     features_train=np.array([np.concatenate(feature) for feature in features_train])
     features_test=np.array([np.concatenate(feature) for feature in features_test])
+
 
 
     #Train rf and predict
@@ -301,10 +309,10 @@ def test_feature_importances(rf):
         type_arr.append(type)
 
         #sum up all features for this type (157 is the number of values in a row for 5 second clips)
-        impact_arr.append(np.sum(f_imp[abs_len:abs_len+(length*157)]))
+        impact_arr.append(np.sum(f_imp[abs_len:abs_len+(length*159)]))
 
         #add to abs_length (just a help int)
-        abs_len+=length*157
+        abs_len+=length*159
 
     #numpyfy
     impact_arr=np.array(impact_arr)
@@ -315,17 +323,29 @@ def test_feature_importances(rf):
     type_arr=type_arr[sort_mask]
     impact_arr=impact_arr[sort_mask]
 
-    # plot with errorbars
-    plt.plot(type_arr, impact_arr)
 
-    # x label
-    plt.xlabel("Features")
+    # bar plot
+    for idx,name in enumerate(type_arr):
+        plt.bar(idx,impact_arr[idx]*100,label=type_arr[idx])
 
-    #plot importance
-    plt.ylabel('Importance (%)')
+    #x label
+    plt.xlabel('Feature',fontsize=30)
+
+    #y label
+    plt.ylabel('Feature importance [%]',fontsize=30)
+
+    #setting x ticks to none
+    plt.xticks([])
+
+    #enlarging y ticks
+    plt.tick_params("both",labelsize="x-large")
+
 
     # plot title
-    plt.title("Feature importances")
+    plt.title("Feature importances given computed by the Random Forest",fontsize=30)
+
+    #legend
+    plt.legend(fontsize="x-large")
 
     # show plot
     plt.show()
@@ -346,6 +366,11 @@ def k_fold_cross_validation(features,classes,n_trees=500,k_fold=10):
     #format classes and features so that we can fit the rf with them
     classes=[classes[idx][:-2] for idx in range(0,len(classes),40)]
     classes=np.concatenate([[cl]*40 for cl in classes])
+
+    # adding mean and std
+    mean_std = np.array([np.mean(features, axis=2), np.std(features, axis=2)]).transpose().swapaxes(0,1)
+    features = np.concatenate((features, mean_std), axis=-1)
+
     features=np.array([np.concatenate(feature) for feature in features])
 
     #create rf
@@ -401,7 +426,7 @@ def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upward
 
 
     #these are the arrays where we pick out the exclusion from
-    excluded_features_upwards = np.array(["malspectrogram", "mfcc", "chroma_stft", "spectral_contrast", "chroma_cens",
+    excluded_features_upwards = np.array(["malspectrogram", "mfcc", "chroma_stft", "chroma_cens", "spectral_contrast",
                                             "chroma_cqt", "tonnetz", "poly_features", "spectral_bandwidth", "rmse",
                                             "spectral_centroid", "spectral_rolloff", "spectral_flatness",
                                             "zero_crossing_rate"])
@@ -530,17 +555,20 @@ def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,n_trees,k_
 
 
         #plot downwards eval with errorbars
-        plt.errorbar(x_axis,downwards_scores_mean,downwards_scores_std,color="red",label="Reduction downwards",capsize=5)
+        plt.errorbar(x_axis,downwards_scores_mean*100,downwards_scores_std*100,color="red",label="Reduction downwards",capsize=5)
 
         # plot upwards eval with errorbars
-        plt.errorbar(x_axis, upwards_scores_mean, upwards_scores_std,color="green",label="Reduction upwards",capsize=5)
+        plt.errorbar(x_axis, upwards_scores_mean*100, upwards_scores_std*100,color="green",label="Reduction upwards",capsize=5)
+
+        #setting range
+        plt.ylim(0, 100)
 
         #x label
         plt.xlabel('Features left out', fontsize=30)
 
         #if time eval, plot time, if not plot accuracy
         if plot_type=="test_score":
-            plt.ylabel('Accuracy', fontsize=30)
+            plt.ylabel('Accuracy[%]', fontsize=30)
         else:
             plt.ylabel('Time(sec)', fontsize=30)
 

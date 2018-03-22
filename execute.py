@@ -51,8 +51,8 @@ def test_esc50(features,classes):
 
             print("Now computing for {} trees".format(n_trees))
 
-            save_path_upwards = "/mnt/localdata1/amatskev/esc_project_rf/class_whole_eval/downwards_results_trees_{}_k_{}.pkl".format(n_trees,fold)
-            save_path_downwards = "/mnt/localdata1/amatskev/esc_project_rf/class_whole_eval/upwards_results_trees_{}_k_{}.pkl".format(n_trees,fold)
+            save_path_upwards = "/mnt/localdata1/amatskev/esc_project_rf/class_whole_eval/upwards_results_trees_{}_k_{}.pkl".format(n_trees,fold)
+            save_path_downwards = "/mnt/localdata1/amatskev/esc_project_rf/class_whole_eval/downwards_results_trees_{}_k_{}.pkl".format(n_trees,fold)
 
             eval_downwards_upwards(features, classes, save_path_downwards, save_path_upwards,n_trees,fold)
             plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,n_trees,fold,esc="ESC50")
@@ -71,9 +71,9 @@ def test_esc50(features,classes):
                 print("Now computing for {} trees".format(n_trees))
 
                 save_path_upwards = "/mnt/localdata1/amatskev/esc_project_rf/" \
-                                      "class_whole_eval/downwards_results_trees_{}_cl_{}_k_{}.pkl".format(n_trees,class_idx,fold)
+                                      "class_whole_eval/upwards_results_trees_{}_cl_{}_k_{}.pkl".format(n_trees,class_idx,fold)
                 save_path_downwards = "/mnt/localdata1/amatskev/esc_project_rf/" \
-                                    "class_whole_eval/upwards_results_trees_{}_cl_{}_k_{}.pkl".format(n_trees,class_idx,fold)
+                                    "class_whole_eval/downwards_results_trees_{}_cl_{}_k_{}.pkl".format(n_trees,class_idx,fold)
 
                 eval_downwards_upwards(features[class_idx:class_idx+40*10], classes[class_idx:class_idx+40*10],
                                        save_path_downwards, save_path_upwards, n_trees,fold)
@@ -113,9 +113,7 @@ if __name__ == '__main__':
     split_files_path="/mnt/localdata1/amatskev/esc_project_rf/split_files/"
     path_for_whole_feature_set="/mnt/localdata1/amatskev/esc_project_rf/whole_feature_set.h5"
     path_for_whole_classes_set="/mnt/localdata1/amatskev/esc_project_rf/whole_classes_set.npy"
-    rf_save_path="/mnt/localdata1/amatskev/esc_project_rf/rf_all_features.pkl"
-    save_path_downwards="/mnt/localdata1/amatskev/esc_project_rf/downwards_results.pkl"
-    save_path_upwards = "/mnt/localdata1/amatskev/esc_project_rf/upwards_results.pkl"
+    rf_save_path="/mnt/localdata1/amatskev/esc_project_rf/rf_all_features_with_mean_std.pkl"
 
     # read_and_split_file(initial_files_path,split_files_path)
 
