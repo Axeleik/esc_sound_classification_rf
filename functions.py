@@ -14,7 +14,12 @@ import random
 
 
 def get_length_array():
+    """
+    Simple helper function to make the code clearner
+    :return: length array: each feature name with its length in the feature array
+    """
 
+    #this array represents each feature name with its length in the feature array
     length_array = [
         ["chroma_stft", 12],
         ["chroma_cqt", 12],
@@ -31,7 +36,9 @@ def get_length_array():
         ["tonnetz", 6],
         ["zero_crossing_rate", 1]]
 
+    #return the length_array
     return length_array
+
 
 def read_and_split_file(path_to_sound_files,output_path):
     """
@@ -148,7 +155,7 @@ def extract_features(soundwave,sampling_rate,sound_name="test",feature_list=[]):
     if "spectral_bandwidth" in feature_list:
         features.append(feat.spectral_bandwidth(soundwave, sampling_rate))
 
-    #"chroma_contrast":7
+    #"spectral_contrast":7
     if "spectral_contrast" in feature_list:
         features.append(feat.spectral_contrast(soundwave, sampling_rate))
 
@@ -174,7 +181,6 @@ def extract_features(soundwave,sampling_rate,sound_name="test",feature_list=[]):
 
 
     return np.concatenate(features)
-
 
 
 def save_all_features_for_all_files(path_to_files,features_path=None,classes_path=None):
@@ -238,6 +244,7 @@ def load_random_forest_classifier(features, labels, save_path=None):
 
     return rf
 
+
 def train_and_predict_with_rf(features_train,classes_train,features_test,save_path=None,test=True):
     """
     Train an rf with features and classes, predict afterwards with test features if wanted
@@ -265,6 +272,7 @@ def train_and_predict_with_rf(features_train,classes_train,features_test,save_pa
         return rf_predictions
 
     return rf
+
 
 def test_feature_importances(rf):
     """
@@ -323,20 +331,6 @@ def test_feature_importances(rf):
     plt.show()
 
 
-def shuffle_features_classes(features,classes):
-    """
-    Shuffles two list together, so they have the same order afterwards
-    :param features: features
-    :param classes: classes
-    :return: both lists shuffled
-    """
-
-    zipped = list(zip(features,classes))
-
-    random.shuffle(zipped)
-
-    return zip(*zipped)
-
 def k_fold_cross_validation(features,classes,n_trees=500,k_fold=10):
     """
     Doing cross fold validation with given features, classes and a k_fold factor
@@ -348,8 +342,6 @@ def k_fold_cross_validation(features,classes,n_trees=500,k_fold=10):
 
     print("Doing {}-fold cross-validation".format(k_fold))
 
-    #shuffle both
-    features, classes = shuffle_features_classes(features,classes)
 
     #format classes and features so that we can fit the rf with them
     classes=[classes[idx][:-2] for idx in range(0,len(classes),40)]
@@ -362,7 +354,6 @@ def k_fold_cross_validation(features,classes,n_trees=500,k_fold=10):
     #cross validate
     return sklearn.model_selection.cross_validate(rf, features, classes,
                                                   cv=k_fold,n_jobs=-1,return_train_score=True)
-
 
 def k_fold_feature_exclusion(features,classes,excluded_features,n_trees,k_fold):
     """
@@ -391,11 +382,9 @@ def k_fold_feature_exclusion(features,classes,excluded_features,n_trees,k_fold):
         else:
             abs_len+=feature_length
 
-    #doing 10 times k-fold cross-validation
-    result=[k_fold_cross_validation(features,classes,n_trees,k_fold) for i in range (0,10)]
+    #return k-fold cross validation results
+    return k_fold_cross_validation(features,classes,n_trees,k_fold)
 
-    #return results
-    return result
 
 def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upwards,n_trees,k_fold):
     """
@@ -412,11 +401,11 @@ def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upward
 
 
     #these are the arrays where we pick out the exclusion from
-    excluded_features_downwards = np.array(["malspectrogram", "mfcc", "chroma_stft", "chroma_contrast", "chroma_cens",
+    excluded_features_upwards = np.array(["malspectrogram", "mfcc", "chroma_stft", "spectral_contrast", "chroma_cens",
                                             "chroma_cqt", "tonnetz", "poly_features", "spectral_bandwidth", "rmse",
                                             "spectral_centroid", "spectral_rolloff", "spectral_flatness",
                                             "zero_crossing_rate"])
-    excluded_features_upwards = excluded_features_downwards[::-1]
+    excluded_features_downwards = excluded_features_upwards[::-1]
 
     #if already exist, do nothing
     if os.path.exists(save_path_downwards):
@@ -498,7 +487,8 @@ def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upward
         print("-------------------------------")
         print("-------------------------------")
 
-def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,n_trees,k_fold,cl="all"):
+
+def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,n_trees,k_fold,cl="all",esc="ESC50"):
     """
     Plotting the k-fold evaluation results for the different exclusion vectors
     :param save_path_downwards: save path for downwards eval results
@@ -511,78 +501,95 @@ def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,n_trees,k_
     results_downwards = pickle.load(open(save_path_downwards, 'rb'))
     results_upwards = pickle.load(open(save_path_upwards, 'rb'))
 
-    # a=[[single['test_score'] for single in cl ] for cl in results_downwards]
+    # compute means and stds of fold eval
+    downwards_scores_mean=  np.mean([cl['test_score'] for cl in results_downwards],axis=1)
+    downwards_scores_std=   np.std([cl['test_score'] for cl in results_downwards],axis=1)
+    upwards_scores_mean =   np.mean([cl['test_score'] for cl in results_upwards],axis=1)
+    upwards_scores_std=     np.std([cl['test_score'] for cl in results_upwards],axis=1)
+
+    #print results for both for all features if not identical
+    if downwards_scores_mean[-1]!=upwards_scores_mean[-1] and downwards_scores_std[-1]!=upwards_scores_std[-1]:
+        print("{}-result, folds:{}, class:{} |||| Downwards Mean:{}, std: {} || Upwards Mean:{}, std: {}".
+              format(esc,k_fold,cl,downwards_scores_mean[-1],downwards_scores_std[-1],upwards_scores_mean[-1],upwards_scores_std[-1]))
+
+    # print results for both for all features if identical
+    else:
+        print("{}-result, folds:{}, class:{} |||| Results Mean:{}, std: {}".
+              format(esc, k_fold, cl, downwards_scores_mean[-1], downwards_scores_std[-1]))
 
     #create array for the types which we plot
-    plot_arr=["test_score","score_time","fit_time"]
+    # plot_arr=["test_score","score_time","fit_time"]
+    plot_arr=["test_score"]
 
 
-    #loop for downward plots
+    #loop for downward (and upward) plots
     for plot_type in plot_arr:
 
-        #make x axis for the number of features we exclude
+        #make x axis for the number of features we exclude (len(results_downwards)=len(results_upwards))
         x_axis=np.arange(0,len(results_downwards))[::-1]
 
-        #create means and std sof the results
-        means=[np.mean(result_downwards[plot_type]) for result_downwards in results_downwards]
-        stds=[np.std(result_downwards[plot_type]) for result_downwards in results_downwards]
 
-        #plot with errorbars
-        plt.errorbar(x_axis,means,stds)
+        #plot downwards eval with errorbars
+        plt.errorbar(x_axis,downwards_scores_mean,downwards_scores_std,color="red",label="Reduction downwards",capsize=5)
+
+        # plot upwards eval with errorbars
+        plt.errorbar(x_axis, upwards_scores_mean, upwards_scores_std,color="green",label="Reduction upwards",capsize=5)
 
         #x label
-        plt.xlabel('Features left out')
+        plt.xlabel('Features left out', fontsize=30)
 
         #if time eval, plot time, if not plot accuracy
         if plot_type=="test_score":
-            plt.ylabel('Accuracy')
+            plt.ylabel('Accuracy', fontsize=30)
         else:
-            plt.ylabel('Time(sec)')
+            plt.ylabel('Time(sec)', fontsize=30)
 
         #plot title for class
         if cl!="all":
-            plt.title("Downward {} with {} trees, {} folds for class {}".format(plot_type,n_trees,k_fold,cl))
+            plt.title("{}: {}-fold evaluation for class {}".format(esc,k_fold,cl), fontsize=30)
 
         #plot title for whole dataset
         else:
-            plt.title("Downward {} with {} trees, {} folds for whole dataset".format(plot_type,n_trees,k_fold))
+            plt.title("{}: {}-fold evaluation for the whole dataset".format(esc,k_fold), fontsize=30)
+
+        #set tick size
+        plt.tick_params("both", labelsize="x-large")
+
+        #legend
+        plt.legend(fontsize=30)
 
         #show plot
         plt.show()
 
 
-
-
-    #loop for upward plots
-    for plot_type in plot_arr:
-
-        #make x axis for the number of features we exclude
-        x_axis=np.arange(0,len(results_upwards))[::-1]
-
-        #create means and std sof the results
-        means=[np.mean(result_upwards[plot_type]) for result_upwards in results_upwards]
-        stds=[np.std(result_upwards[plot_type]) for result_upwards in results_upwards]
-
-        #plot with errorbars
-        plt.errorbar(x_axis,means,stds)
-
-        #x label
-        plt.xlabel('Features left out')
-
-        #if time eval, plot time, if not plot accuracy
-        if plot_type=="test_score":
-            plt.ylabel('Accuracy')
-        else:
-            plt.ylabel('Time(sec)')
-
-        #plot title for class
-        if cl!="all":
-            plt.title("Upward {} with {} trees, {} folds for class {}".format(plot_type,n_trees,k_fold,cl))
-
-        #plot title for whole dataset
-        else:
-            plt.title("Upward {} with {} trees, {} folds for whole dataset".format(plot_type,n_trees,k_fold))
-
-
-        #show plot
-        plt.show()
+    # #loop for upward plots
+    # for plot_type in plot_arr:
+    #
+    #     #make x axis for the number of features we exclude
+    #     x_axis=np.arange(0,len(results_upwards))[::-1]
+    #
+    #
+    #
+    #
+    #     #x label
+    #     plt.xlabel('Features left out', fontsize=30)
+    #
+    #     #if time eval, plot time, if not plot accuracy
+    #     if plot_type=="test_score":
+    #         plt.ylabel('Accuracy', fontsize=30)
+    #     else:
+    #         plt.ylabel('Time(sec)', fontsize=30)
+    #
+    #     #plot title for class
+    #     if cl!="all":
+    #         plt.title("Upward {} with {} folds for class {}".format(plot_type,k_fold,cl), fontsize=30)
+    #
+    #     #plot title for whole dataset
+    #     else:
+    #         plt.title("Upward {} with {} folds for whole dataset".format(plot_type,k_fold), fontsize=30)
+    #
+    #     #set tick size
+    #     plt.tick_params("both", labelsize="x-large")
+    #
+    #     #show plot
+    #     plt.show()
