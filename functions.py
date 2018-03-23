@@ -513,7 +513,7 @@ def eval_downwards_upwards(features,classes,save_path_downwards,save_path_upward
         print("-------------------------------")
 
 
-def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,n_trees,k_fold,cl="all",esc="ESC50"):
+def plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,n_trees,k_fold,cl="all",esc="ESC50",):
     """
     Plotting the k-fold evaluation results for the different exclusion vectors
     :param save_path_downwards: save path for downwards eval results

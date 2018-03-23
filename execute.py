@@ -54,6 +54,7 @@ def test_esc50(features,classes):
             save_path_upwards = "/mnt/localdata1/amatskev/esc_project_rf/class_whole_eval/upwards_results_trees_{}_k_{}.pkl".format(n_trees,fold)
             save_path_downwards = "/mnt/localdata1/amatskev/esc_project_rf/class_whole_eval/downwards_results_trees_{}_k_{}.pkl".format(n_trees,fold)
 
+
             eval_downwards_upwards(features, classes, save_path_downwards, save_path_upwards,n_trees,fold)
             plot_eval_downwards_upwards(save_path_downwards,save_path_upwards,n_trees,fold,esc="ESC50")
 
@@ -75,10 +76,14 @@ def test_esc50(features,classes):
                 save_path_downwards = "/mnt/localdata1/amatskev/esc_project_rf/" \
                                     "class_whole_eval/downwards_results_trees_{}_cl_{}_k_{}.pkl".format(n_trees,class_idx,fold)
 
+
+
                 eval_downwards_upwards(features[class_idx:class_idx+40*10], classes[class_idx:class_idx+40*10],
                                        save_path_downwards, save_path_upwards, n_trees,fold)
 
                 plot_eval_downwards_upwards(save_path_downwards, save_path_upwards, n_trees,fold,int(class_idx/400)+1,esc="ESC50")
+
+
 
 def test_esc10(features,classes):
     import numpy as np
@@ -130,4 +135,4 @@ if __name__ == '__main__':
     # eval_downwards_upwards(features,classes,save_path_downwards,save_path_upwards)
 
     test_esc50(features, classes)
-    test_esc10(features, classes)
+    # test_esc10(features, classes)
